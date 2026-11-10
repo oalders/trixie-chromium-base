@@ -43,10 +43,53 @@ activity; if the reminders stop, re-enable the workflow or run it by hand.
 Dependabot proposes updates to the digest-pinned `debian:trixie-slim` base and
 to the workflow actions.
 
+## The tools image
+
+`ghcr.io/oalders/trixie-chromium-base-tools` is a store of files, built from
+`Dockerfile.tools` on top of the runtime image. It is never run; copy files out
+of it.
+
+| Path | Contents |
+|------|----------|
+| `/debs/cgo/*.deb` | `gcc libc6-dev` and the dependencies the runtime image lacks |
+| `/debs/test-tools/*.deb` | the `TEST_TOOLS_PACKAGES` list in `Dockerfile.tools`, likewise |
+| `/tools/bin/` | `precious`, `omegasort`, `is` and `golangci-lint`, static Linux x86_64 binaries |
+
+The tag is `<runtime image tag>-<12 hex of Dockerfile.tools' sha256>`, for
+example `20261001T000000Z-3ad9f9de4fdf-0123456789ab`. As with the runtime image,
+pin by digest:
+
+```dockerfile
+COPY --from=ghcr.io/oalders/trixie-chromium-base-tools:<tag>@sha256:<digest> /debs/cgo /debs/cgo
+```
+
+Install a set offline on the runtime image (the digest in `Dockerfile.tools`'
+`FROM`) with no network and no apt lists:
+
+```sh
+apt-get install -y --no-install-recommends /debs/cgo/*.deb
+```
+
+Both package lists are `ARG`s in `Dockerfile.tools`, so changing one changes
+the tag.
+
+### Bumping the snapshot
+
+The closures are resolved against the runtime image's snapshot, so a snapshot
+bump takes three steps:
+
+1. Merge the `DEBIAN_SNAPSHOT` change to `Dockerfile` and let Publish push the
+   new runtime image.
+2. Point the `FROM` in `Dockerfile.tools` at the new runtime tag and digest
+   printed in that run's job summary.
+3. Merge that change; Publish pushes the new tools image.
+
 ## One-time setup
 
-GHCR creates the package private on its first publish. After that run, set the
+GHCR creates each package private on its first publish. After that run, set the
 package's visibility to **Public** in its settings so anonymous pulls work.
+Do this for the tools image's package (`trixie-chromium-base-tools`) as well as
+the runtime image's.
 
 ## Tests
 

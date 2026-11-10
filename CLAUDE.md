@@ -1,8 +1,12 @@
 # CLAUDE.md
 
-This repo publishes one public container image,
-`ghcr.io/oalders/trixie-chromium-base`, built from `Dockerfile`. See
-`README.md` for how it is used and updated.
+This repo publishes two public container images. See `README.md` for how they
+are used and updated.
+
+- `ghcr.io/oalders/trixie-chromium-base`, the runtime image, built from
+  `Dockerfile`.
+- `ghcr.io/oalders/trixie-chromium-base-tools`, a store of `.deb` closures and
+  static binaries that is never run, built from `Dockerfile.tools`.
 
 ## This repo and its image are public
 
@@ -11,14 +15,18 @@ Everything committed here, and everything baked into the image, is public.
 - Never mention other projects, private repos, hostnames, issue numbers from
   elsewhere, or why a downstream consumer needs a change. Describe changes in
   terms of this image only.
-- The image contains only public Debian packages. Don't add `COPY`/`ADD`,
-  secret mounts, or build args beyond `DEBIAN_SNAPSHOT`.
+- The runtime image contains only public Debian packages. Don't add
+  `COPY`/`ADD`, secret mounts, or build args beyond `DEBIAN_SNAPSHOT` to
+  `Dockerfile`.
+- The tools image contains only public Debian packages and public release
+  binaries. No `COPY`/`ADD` and no secret mounts there either.
 
 ## Published tags are immutable by convention
 
-Consumers are told to pin by digest (`README.md`). The tag embeds a hash of `Dockerfile`, so any
-edit to it publishes a new tag; never retag, delete, or force-push an existing
-one, and never weaken `scripts/existing-digest.sh`'s fail-closed lookup.
+Consumers are told to pin by digest (`README.md`). Each tag embeds a hash of
+its Dockerfile (`Dockerfile` or `Dockerfile.tools`), so any edit to one
+publishes a new tag; never retag, delete, or force-push an existing one, in
+either image, and never weaken `scripts/existing-digest.sh`'s fail-closed lookup.
 
 ## Workflow logic lives in scripts
 
