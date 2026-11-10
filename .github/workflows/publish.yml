@@ -1,17 +1,19 @@
 ---
 name: Publish
 
-# Builds the image on PRs that touch it (no push) and publishes it to GHCR on
-# main as
-# ghcr.io/<owner>/<repo>:<DEBIAN_SNAPSHOT>-<12 hex of the Dockerfile's sha256>.
-# Consumers pin the digest printed in the job summary.
+# Builds the images on PRs that touch them (no push) and publishes them to GHCR
+# on main as
+# ghcr.io/<owner>/<repo>:<DEBIAN_SNAPSHOT>-<12 hex of the Dockerfile's sha256>
+# and
+# ghcr.io/<owner>/<repo>-tools:<runtime tag>-<12 hex of Dockerfile.tools' sha256>.
+# Consumers pin the digests printed in the job summary.
 
 on:
   push:
     branches: [main]
-    paths: [Dockerfile, scripts/**, .github/workflows/publish.yml]
+    paths: [Dockerfile, Dockerfile.tools, scripts/**, .github/workflows/publish.yml]
   pull_request:
-    paths: [Dockerfile, scripts/**, .github/workflows/publish.yml]
+    paths: [Dockerfile, Dockerfile.tools, scripts/**, .github/workflows/publish.yml]
   workflow_dispatch:
 
 # Serialize publishes per ref so two main runs can't both see the tag absent and
@@ -78,4 +80,36 @@ jobs:
         env:
           IMAGE: ${{ steps.tag.outputs.image }}
           DIGEST: ${{ steps.existing.outputs.digest || steps.build.outputs.digest }}
+        run: bash scripts/print-pin.sh "$IMAGE" "$DIGEST"
+
+      - name: Compute tools image tag
+        id: tools_tag
+        run: bash scripts/tools-tag-outputs.sh "$GITHUB_REPOSITORY" >> "$GITHUB_OUTPUT"
+
+      - name: Look up existing tools tag
+        id: tools_existing
+        if: env.PUBLISH == 'true'
+        env:
+          IMAGE: ${{ steps.tools_tag.outputs.image }}
+        run: |
+          DIGEST=$(bash scripts/existing-digest.sh "$IMAGE")
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: Build tools image (and push on main)
+        id: tools_build
+        if: steps.tools_existing.outputs.digest == ''
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          file: Dockerfile.tools
+          push: ${{ env.PUBLISH == 'true' }}
+          provenance: false
+          sbom: false
+          tags: ${{ steps.tools_tag.outputs.image }}
+
+      - name: Print pinned tools reference
+        if: env.PUBLISH == 'true'
+        env:
+          IMAGE: ${{ steps.tools_tag.outputs.image }}
+          DIGEST: ${{ steps.tools_existing.outputs.digest || steps.tools_build.outputs.digest }}
         run: bash scripts/print-pin.sh "$IMAGE" "$DIGEST"

@@ -132,6 +132,7 @@ adjacent() {
     grep -A6 -Fx create "$BATS_TEST_TMPDIR/gh-calls" | grep -Fxq -- --body
     adjacent --title 'DEBIAN_SNAPSHOT bump: candidate C1 validated (chromium launches)'
     grep -Fq 'to `C1`' "$BATS_TEST_TMPDIR/gh-calls"
+    grep -Fq 'point the `FROM` in `Dockerfile.tools`' "$BATS_TEST_TMPDIR/gh-calls"
     grep -Fq -- '- Current default: `C0`' "$BATS_TEST_TMPDIR/gh-calls"
     grep -Fq 'Run: https://run' "$BATS_TEST_TMPDIR/gh-calls"
 }
@@ -147,6 +148,7 @@ adjacent() {
         grep -Fq "(build outcome: \`$outcome\`)" "$BATS_TEST_TMPDIR/gh-calls"
     done
     grep -Fq 'Keep `C0`' "$BATS_TEST_TMPDIR/gh-calls"
+    grep -Fq 'tools package set failed to resolve' "$BATS_TEST_TMPDIR/gh-calls"
 }
 
 @test "reminder says no bump is needed when the current pin is re-validated" {

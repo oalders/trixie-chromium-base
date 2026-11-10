@@ -1,0 +1,59 @@
+# A public store of files, built on the runtime image. It is not meant to be
+# run; copy what you need out of it.
+#
+#   /debs/cgo/*.deb         the packages in CGO_PACKAGES and everything they
+#                           depend on that the runtime image lacks
+#   /debs/test-tools/*.deb  the same for TEST_TOOLS_PACKAGES
+#   /tools/bin/             precious, omegasort, is and golangci-lint, static
+#                           Linux x86_64 release binaries
+#
+# Each /debs/<set> directory installs offline on the runtime image:
+#   apt-get install -y --no-install-recommends /debs/<set>/*.deb
+#
+# Only public Debian packages and public release binaries go in here. The
+# package lists are ARGs in this file so that changing one changes the image
+# tag, which hashes this file.
+FROM ghcr.io/oalders/trixie-chromium-base:20261001T000000Z-3ad9f9de4fdf@sha256:c5221feaeed0903ae4b7262c9c796ec84e26d32b4caae4df15a4d35c602d73f5
+
+LABEL org.opencontainers.image.source="https://github.com/oalders/trixie-chromium-base"
+
+ARG CGO_PACKAGES="gcc libc6-dev"
+ARG TEST_TOOLS_PACKAGES="bats g++ gcc git libasound2 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libc6-dev libcairo2 libcups2 libdrm2 libgbm1 libnss3 libpango-1.0-0 libxcomposite1 libxdamage1 libxfixes3 libxkbcommon0 libxrandr2 make python3 rsync"
+
+# Download each set's closure (the packages plus their dependencies, minus what
+# the runtime image already has) without installing it.
+RUN set -eu; \
+    apt-get update; \
+    for set in cgo test-tools; do \
+      case "$set" in \
+        cgo) packages="$CGO_PACKAGES" ;; \
+        test-tools) packages="$TEST_TOOLS_PACKAGES" ;; \
+      esac; \
+      mkdir -p "/debs/$set/partial"; \
+      # $packages is deliberately unquoted: it is a space-separated list.
+      # shellcheck disable=SC2086
+      apt-get install -y --download-only --no-install-recommends \
+        -o "Dir::Cache::archives=/debs/$set" $packages; \
+      rm -rf "/debs/$set/partial" "/debs/$set/lock"; \
+      ls "/debs/$set"/*.deb > /dev/null; \
+    done; \
+    rm -rf /var/lib/apt/lists/*
+
+# Each archive holds the named binary somewhere inside it (golangci-lint's is
+# nested in a directory); install it flat into /tools/bin.
+RUN set -eu; \
+    mkdir -p /tools/bin; \
+    fetch() { \
+      url="$1"; bin="$2"; \
+      dir="$(mktemp -d)"; \
+      curl -fsSL --retry 5 "$url" | tar -xz -C "$dir"; \
+      install -m 0755 "$(find "$dir" -type f -name "$bin" | head -n 1)" "/tools/bin/$bin"; \
+      rm -rf "$dir"; \
+    }; \
+    fetch https://github.com/houseabsolute/precious/releases/download/v0.10.2/precious-Linux-musl-x86_64.tar.gz precious; \
+    fetch https://github.com/houseabsolute/omegasort/releases/download/v0.1.3/omegasort-Linux-x86_64-musl.tar.gz omegasort; \
+    fetch https://github.com/oalders/is/releases/download/v0.14.3/is_Linux_x86_64.tar.gz is; \
+    fetch https://github.com/golangci/golangci-lint/releases/download/v2.12.2/golangci-lint-2.12.2-linux-amd64.tar.gz golangci-lint; \
+    for bin in precious omegasort is golangci-lint; do \
+      "/tools/bin/$bin" --version; \
+    done
