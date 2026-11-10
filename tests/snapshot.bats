@@ -147,6 +147,7 @@ adjacent() {
         grep -Fq "(build outcome: \`$outcome\`)" "$BATS_TEST_TMPDIR/gh-calls"
     done
     grep -Fq 'Keep `C0`' "$BATS_TEST_TMPDIR/gh-calls"
+    grep -Fq 'tools package set failed to resolve' "$BATS_TEST_TMPDIR/gh-calls"
 }
 
 @test "reminder says no bump is needed when the current pin is re-validated" {

@@ -4,7 +4,7 @@
 # unless an open issue with the same title, opened by this workflow, exists.
 # Counting only github-actions' issues stops anyone pre-opening the title.
 #
-# Usage: open-reminder-issue.sh <repo> <candidate> <current> <build outcome> <run url>
+# Usage: open-reminder-issue.sh <repo> <candidate> <current> <outcome> <run url>
 # A failed `gh issue list` or unparseable output exits non-zero rather than
 # reading as "no issue", which would open a duplicate.
 set -euo pipefail
@@ -34,7 +34,7 @@ Run: ${RUN_URL}"
 else
     # Covers failure and skipped/cancelled: anything but a passing build.
     TITLE="DEBIAN_SNAPSHOT bump: candidate ${CANDIDATE} FAILED build/smoke check"
-    BODY="The image did not build at candidate \`${CANDIDATE}\` (build outcome: \`${OUTCOME}\`), or chromium failed its launch smoke check. **Do not bump the pin.** Keep \`${CURRENT}\`; this candidate needs investigation.
+    BODY="The image did not build at candidate \`${CANDIDATE}\` (build outcome: \`${OUTCOME}\`), chromium failed its launch smoke check, or a tools package set failed to resolve. **Do not bump the pin.** Keep \`${CURRENT}\`; this candidate needs investigation.
 
 - Current default (unchanged): \`${CURRENT}\`
 - Failed candidate: \`${CANDIDATE}\`
