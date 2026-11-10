@@ -132,6 +132,7 @@ adjacent() {
     grep -A6 -Fx create "$BATS_TEST_TMPDIR/gh-calls" | grep -Fxq -- --body
     adjacent --title 'DEBIAN_SNAPSHOT bump: candidate C1 validated (chromium launches)'
     grep -Fq 'to `C1`' "$BATS_TEST_TMPDIR/gh-calls"
+    grep -Fq 'point the `FROM` in `Dockerfile.tools`' "$BATS_TEST_TMPDIR/gh-calls"
     grep -Fq -- '- Current default: `C0`' "$BATS_TEST_TMPDIR/gh-calls"
     grep -Fq 'Run: https://run' "$BATS_TEST_TMPDIR/gh-calls"
 }
