@@ -2,7 +2,8 @@
 name: Snapshot Bump Reminder
 
 # On the 1st of each month: build-validate the Dockerfile at a candidate
-# DEBIAN_SNAPSHOT (no push), so the chromium launch smoke check runs, and open
+# DEBIAN_SNAPSHOT (no push), so the chromium launch smoke check runs, check the
+# tools image's package sets still resolve on it, and open
 # a reminder issue saying whether the candidate is safe to bump to. The bump
 # itself stays a manual PR.
 
@@ -66,8 +67,18 @@ jobs:
         with:
           context: .
           push: false
+          load: true
+          tags: candidate:local
           build-args: |
             DEBIAN_SNAPSHOT=${{ steps.snapshot.outputs.candidate }}
+
+      # The tools image installs its package sets on this image's base, so check
+      # they still resolve at the candidate snapshot.
+      - name: Validate tools package sets resolve
+        id: tools
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: bash scripts/validate-tools-packages.sh candidate:local
 
       # always(): a failed Buildx setup must still be reported, as FAILED.
       - name: Open reminder issue
@@ -77,6 +88,6 @@ jobs:
           REPO: ${{ github.repository }}
           CANDIDATE: ${{ steps.snapshot.outputs.candidate }}
           CURRENT: ${{ steps.snapshot.outputs.current }}
-          OUTCOME: ${{ steps.build.outcome }}
+          OUTCOME: ${{ steps.build.outcome == 'success' && steps.tools.outcome || steps.build.outcome }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: bash scripts/open-reminder-issue.sh "$REPO" "$CANDIDATE" "$CURRENT" "$OUTCOME" "$RUN_URL"
